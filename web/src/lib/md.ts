@@ -9,8 +9,14 @@ marked.use({
   renderer: {
     heading({ tokens }) { return `<p><strong>${this.parser.parseInline(tokens)}</strong></p>\n`; },
     html({ text }) { return DOMPurify.sanitize(text); },
+    // 代码块：语言名放在 data-lang 上，顶栏（语言 · 复制 · 展开）由 lib/codeblock.ts 在页面上加
+    code({ text, lang, escaped }) {
+      const l = (lang || '').trim().split(/\s+/)[0].replace(/[^\w+#.-]/g, '').slice(0, 24);
+      return `<pre${l ? ` data-lang="${l}"` : ''}><code>${escaped ? text : esc(text)}</code></pre>\n`;
+    },
   },
 });
+function esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 const ALLOWED = ['p', 'br', 'strong', 'em', 'del', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'hr'];
 

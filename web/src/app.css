@@ -133,3 +133,13 @@ textarea { resize: none; }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* 代码块（lib/codeblock.ts 加的顶栏）：语言名 · 复制 · 展开；超过 5 行先只露 5 行。
+   颜色全用 currentColor 调深浅：工坊的纸上、深色模式里都成立 */
+.md pre.cb { position: relative; padding: 0; overflow: hidden; border-radius: 14px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.md pre.cb > .cb-head { display: flex; align-items: center; gap: 0; padding: 1px 4px 1px 14px; white-space: normal; background: color-mix(in srgb, currentColor 4%, transparent); border-bottom: 1px solid color-mix(in srgb, currentColor 9%, transparent); user-select: none; -webkit-user-select: none; }
+.md pre.cb > .cb-head .cb-lang { flex: 1; min-width: 0; font-family: var(--mono); font-weight: 300; font-size: 10.5px; letter-spacing: .08em; opacity: .6; overflow: hidden; text-overflow: ellipsis; }
+.md pre.cb > .cb-head button { flex: none; width: 32px; height: 30px; display: flex; align-items: center; justify-content: center; color: inherit; opacity: .72; }
+.md pre.cb > code.cb-c { display: block; overflow-x: auto; overscroll-behavior-x: contain; touch-action: pan-x pan-y; padding: 9px 14px 11px; background: none; border-radius: 0; color: inherit; font-size: inherit; word-break: normal; white-space: pre; }
+.md pre.cb.folded > code.cb-c { max-height: calc(5 * 1.7em + 9px); max-height: calc(5lh + 9px); overflow-y: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }

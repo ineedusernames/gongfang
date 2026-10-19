@@ -24,6 +24,7 @@
 - **看它干了什么**：一串工具调用收成一行"改了 3 个文件，跑了 2 条命令 +13 −7"，点开是每一步：改动对比带行号、命令和输出、读到的图。
 - **换档不重开**：权限模式（每次问 / 自动 / 改文件不问 / 只出方案）、模型、effort，下一句生效，进程不重启。
 - **斜杠命令**：输入框打 `/` 浮出这个目录能用的全部命令（内置 + 你装的 skill + 插件），`/compact`、`/context`、`/usage` 的输出排成卡片。
+- **复制**：代码块带语言名和复制按钮，超过 5 行先折起来、点一下原地展开；每轮回复结尾一键复制整轮，或者摊到一张静止的全屏纸上随便划选（会话页里内容一直在变，跨屏划选容易断）。
 - **停下**：随时停下这一轮；也能关掉后台进程（记录留着）。
 - **不和电脑抢**：电脑上正开着的会话（2 分钟内有别的进程在写），手机上接着说会分出一条新会话，不两边写同一个文件。分出来的和原来那条在列表里并成一张卡片，会话页顶上 ‹ 1/2 › 切。
 
@@ -153,6 +154,7 @@ MIT
 - Continue any session (text + images); idle ones are resumed with `--resume` in their original cwd. Start new sessions in any directory you've used.
 - Answer permission prompts (allow / allow for this session / deny with a message), `AskUserQuestion` multiple choice, and plan approvals from the phone.
 - Tool calls are summarized ("edited 3 files, ran 2 commands +13 −7") and expandable to diffs with line numbers, command output and images.
+- Code blocks with copy / expand (folded after 5 lines); copy a whole reply or open it on a static full-screen page for easy text selection.
 - Switch permission mode, model and effort without restarting the process. Slash-command palette with every command available in that directory.
 - Won't fight your PC: if a session is being written by another process, continuing it from the phone forks a new session instead.
 

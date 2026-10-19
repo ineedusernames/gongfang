@@ -72,6 +72,9 @@ const weather = [
   tool('Edit', { file_path: `${W}/src/app.css`, old_string: '…', new_string: '…' }, { patch: [hunk(31, 31, ['-  --text-2: #b8b6ae;', '+  --text-2: #8f8d86;'])] }),
   X('调淡了一档（`--text-2` 从 `#b8b6ae` 到 `#8f8d86`），浅色模式不受影响。'),
   E(12000),
+  U('深色模式的那几个颜色变量贴给我看看？'),
+  X('在 `src/app.css` 里，深色模式那一段：\n\n```css\n@media (prefers-color-scheme: dark) {\n  :root {\n    --surface: #1b1d23;\n    --text: #e9e7e1;\n    --text-2: #8f8d86;\n    --accent: #3a6cff;\n    --rule: rgba(233, 231, 225, 0.10);\n  }\n}\n```\n\n要在别的组件里用，直接写：\n\n```css\ncolor: var(--text-2);\n```'),
+  E(9000),
 ];
 
 const notes = [

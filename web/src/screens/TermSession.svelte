@@ -22,6 +22,9 @@
   import ToolIcon from '../components/ToolIcon.svelte';
   import AskCard from '../components/AskCard.svelte';
   import ImageViewer from '../components/ImageViewer.svelte';
+  import ReadPaper from '../components/ReadPaper.svelte';
+  import { codeBlocks } from '../lib/codeblock';
+  import { copyText } from '../lib/copy';
 
   // 关掉时 term.view 马上变成 null，但页面还要往右滑出去 260ms：这段时间照旧显示最后那一份，不先变空白
   let keep: TermView | null = term.view;
@@ -83,12 +86,22 @@
   let topEl: HTMLElement | undefined = $state();
   let stick = true;
   let showDown = $state(false);
+  // 手上有划选的字：不往前加载（插进来的旧记录会把选区冲掉）、不自动钉底、列表上沿不加渐隐遮罩（有的安卓机遮罩下选区会乱）
+  let selecting = $state(false);
+  $effect(() => {
+    const on = () => {
+      const s = document.getSelection();
+      selecting = !!(s && !s.isCollapsed && listEl && s.anchorNode && listEl.contains(s.anchorNode));
+    };
+    document.addEventListener('selectionchange', on);
+    return () => document.removeEventListener('selectionchange', on);
+  });
   function onScroll() {
     if (!listEl) return;
     const gap = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight;
     stick = gap < 60;
     showDown = gap > 400;
-    if (listEl.scrollTop < 600 && v?.before !== null && !v?.more) void earlier();
+    if (!selecting && listEl.scrollTop < 600 && v?.before !== null && !v?.more) void earlier();
   }
   function toBottom(smooth = false) {
     if (!listEl) return;
@@ -97,7 +110,7 @@
   $effect(() => {
     const f = flowEl, l = listEl;
     if (!f || !l) return;
-    const ro = new ResizeObserver(() => { if (stick) l.scrollTop = l.scrollHeight; });
+    const ro = new ResizeObserver(() => { if (stick && !selecting) l.scrollTop = l.scrollHeight; });
     ro.observe(f);
     return () => ro.disconnect();
   });
@@ -135,7 +148,7 @@
   $effect(() => {
     const l = listEl;
     if (!l) return;
-    const ro = new ResizeObserver(() => { if (stick) l.scrollTop = l.scrollHeight; });
+    const ro = new ResizeObserver(() => { if (stick && !selecting) l.scrollTop = l.scrollHeight; });
     ro.observe(l);
     return () => ro.disconnect();
   });
@@ -255,6 +268,29 @@
   // 图按内容命名：同一张图看了两遍（一模一样的截图）src 就一样，只留一张——不然下面按 src 当 key 的 each 会撞 key，整页空白
   const shotsOf = (b: Extract<Block, { type: 'tools' }>) => b.steps.flatMap(x => (x.k === 'tool' ? x.result?.images ?? [] : [])).filter((im, i, all) => all.findIndex(o => o.src === im.src) === i).slice(0, 6);
   let viewer = $state<string | null>(null);
+
+  // ---- 每轮结尾那行小字前面：复制这一轮说的话 / 摊开来选字 ----
+  // 一轮 = 上一句你的话之后、到这条 end 为止，Claude 说的所有字（不含思考和工具）
+  const turnText = $derived.by(() => {
+    const out = new Map<string, string>();
+    let acc: string[] = [];
+    for (const it of v?.items ?? []) {
+      if (it.k === 'user') acc = [];
+      else if (it.k === 'text') acc.push(it.text);
+      else if (it.k === 'end') { out.set(it.id, acc.join('\n\n').trim()); acc = []; }
+    }
+    return out;
+  });
+  let copiedEnd = $state('');
+  async function copyTurn(id: string) {
+    const t = turnText.get(id);
+    if (!t || !await copyText(t)) return;
+    haptic('select');
+    copiedEnd = id;
+    setTimeout(() => { if (copiedEnd === id) copiedEnd = ''; }, 1200);
+  }
+  let reading = $state<string | null>(null);
+  function readTurn(id: string) { const t = turnText.get(id); if (t) { haptic('tick'); reading = t; } }
 </script>
 
 <section class="ts" onintroend={() => { entered = true; }} in:fly={{ x: 56, duration: 380, easing: cubicOut, opacity: 0 }} out:fly={{ x: 56, duration: 260, easing: cubicOut, opacity: 0 }}>
@@ -285,8 +321,8 @@
     </button>
   </header>
 
-  <main class="list" bind:this={listEl} onscroll={onScroll}>
-    <div class="flow" bind:this={flowEl}>
+  <main class="list" class:sel={selecting} bind:this={listEl} onscroll={onScroll}>
+    <div class="flow" bind:this={flowEl} use:codeBlocks>
       {#if v?.more}<p class="label breathe center">…</p>{/if}
       {#if v?.loading && !v.items.length}
         <p class="label breathe center pad">…</p>
@@ -355,7 +391,21 @@
           {:else if it.k === 'note'}
             <div class="note" class:err={it.tone === 'err'} class:fade-in={fresh(b)}><span class="label">{it.text}</span></div>
           {:else if it.k === 'end'}
-            <p class="meta label" class:fade-in={fresh(b)}>{hhmm(it.t)}{it.model ? ' · ' + modelShort(it.model) : ''}{it.ms ? ' · ' + secs(it.ms) : ''}</p>
+            <div class="meta" class:fade-in={fresh(b)}>
+              {#if turnText.get(it.id)}
+                <button class="mi" aria-label="复制这一轮" onclick={() => copyTurn(it.id)}>
+                  {#if copiedEnd === it.id}
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>
+                  {:else}
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 5V4.5A1.5 1.5 0 0 0 11.5 3h-7A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H5"/></svg>
+                  {/if}
+                </button>
+                <button class="mi" aria-label="选择文字" onclick={() => readTurn(it.id)}>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5h5M7.5 16.5h5M10 3.5v13"/></svg>
+                </button>
+              {/if}
+              <span class="label">{hhmm(it.t)}{it.model ? ' · ' + modelShort(it.model) : ''}{it.ms ? ' · ' + secs(it.ms) : ''}</span>
+            </div>
           {/if}
         {/if}
       {/each}
@@ -427,6 +477,7 @@
   </footer>
 
   {#if viewer}<ImageViewer src={viewer} onclose={() => { viewer = null; }} />{/if}
+  {#if reading !== null}<ReadPaper text={reading} onclose={() => { reading = null; }} />{/if}
 </section>
 
 {#if toolSteps}
@@ -472,7 +523,7 @@
           <span>关掉后台</span>
           <span class="label">{s?.live ? '记录留着，下次说话再拉起来' : '没在跑'}</span>
         </button>
-        <button class="row" onclick={() => { void navigator.clipboard?.writeText(v?.cwd || ''); sheetRef?.close(); }}>
+        <button class="row" onclick={() => { void copyText(v?.cwd || '').then(ok => { if (ok) haptic('select'); }); sheetRef?.close(); }}>
           <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7a2 2 0 0 1 2-2h3.5l2 2h6a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2h-11.5a2 2 0 0 1-2-2z"/></svg>
           <span>复制路径</span>
           <span class="label mono">{v?.cwd}</span>
@@ -500,6 +551,7 @@
 
   .list { position: absolute; top: var(--ts-top, 64px); left: 0; right: 0; bottom: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 8px 18px var(--ts-bar, 110px);
     -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px); mask-image: linear-gradient(to bottom, transparent 0, #000 10px); }
+  .list.sel { -webkit-mask-image: none; mask-image: none; }
   .tail { height: 14px; }
   .all { animation: fade-in .26s var(--ease-out) both; }
   .center { text-align: center; padding: 8px 0; }
@@ -537,7 +589,7 @@
   .md :global(strong) { font-weight: 500; }
   .md :global(blockquote) { margin: .2em 0 .6em; padding-left: 10px; border-left: 1px solid var(--rule); color: var(--ink-2); }
   .md :global(code) { font-family: var(--mono); font-weight: 300; font-size: .82em; color: var(--blue); background: var(--blue-wash); padding: .08em .35em; border-radius: 4px; word-break: break-all; }
-  .md :global(pre) { font-family: var(--mono); font-weight: 300; font-size: 12px; line-height: 1.7; background: color-mix(in srgb, var(--paper-2) 85%, transparent); padding: 10px 12px; border-radius: 10px; overflow-x: auto; margin: .3em 0 .7em; touch-action: pan-x pan-y; }
+  .md :global(pre) { font-family: var(--mono); font-weight: 300; font-size: 12px; line-height: 1.7; margin: .3em 0 .7em; }   /* 底色、顶栏、折叠见 app.css 的 pre.cb */
   .md :global(pre code) { background: none; padding: 0; color: var(--ink); font-size: inherit; word-break: normal; }
   .md :global(a) { color: var(--blue); text-decoration: none; border-bottom: 1px solid var(--blue); }
   .md :global(hr) { border: 0; border-top: 1px solid var(--rule); margin: .8em 0; }
@@ -572,7 +624,12 @@
   .note::before, .note::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
   .note .label { font-size: 10px; letter-spacing: .12em; }
   .note.err .label { color: var(--blue); }
-  .meta { font-size: 9.5px; margin: -2px 0 16px; opacity: .8; }
+  .meta { display: flex; align-items: center; margin: -4px 0 14px; }
+  .meta .label { font-size: 9.5px; opacity: .8; }
+  .meta .mi + .label { margin-left: 4px; }
+  /* 复制 / 选择文字：16px 线条，点按区域 28×26，第一个往外收 6px 让图形和正文左边对齐（和聊天里消息下面那排一样） */
+  .mi { flex: none; width: 28px; height: 26px; display: flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .mi:first-child { margin-left: -6px; }
   .doing { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
 
   .down { position: absolute; right: 16px; bottom: calc(var(--ts-bar, 110px) + 8px); z-index: 4; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--ink);
