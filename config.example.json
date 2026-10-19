@@ -1,0 +1,19 @@
+{
+  "host": "0.0.0.0",
+  "port": 4800,
+  "token": "",
+  "claude": {
+    "exe": "claude",
+    "thinking_display": "summarized",
+    "models": [
+      { "id": "opus", "label": "Opus" },
+      { "id": "sonnet", "label": "Sonnet" },
+      { "id": "haiku", "label": "Haiku" }
+    ]
+  },
+  "hide": [],
+  "hide_temp": true,
+  "data_dir": "./data",
+  "max_live": 4,
+  "idle_minutes": 20
+}

@@ -1,0 +1,135 @@
+/* 纸和墨：浅色是米白纸 + 墨字 + 一个蓝，深色反过来。只有三种颜色，没有红绿。 */
+:root {
+  --paper: #f3f2ee;
+  --paper-2: #ebeae5;
+  --ink: #141414;
+  --ink-2: #6b6a66;
+  --blue: #1d4fe6;
+  --blue-wash: rgba(29, 79, 230, 0.10);
+  --rule: rgba(20, 20, 20, 0.10);
+  --dim: rgba(243, 242, 238, 0.15);       /* 抽屉遮罩：半透明纸色，配合 backdrop blur */
+  --you-bg: #dad8d1;                       /* 你的气泡 */
+  --you-ink: #141414;
+  --glass: rgba(243, 242, 238, 0.72);
+  --glass-box: rgba(243, 242, 238, 0.55);  /* 输入框：更透一点 */
+  --box-edge: rgba(20, 20, 20, 0.10);
+  --box-hi: rgba(255, 255, 255, 0.65);     /* 输入框上沿高光 */
+  --wash: rgba(29, 79, 230, 0.07);         /* 页面顶上那一抹淡淡的主色 */
+  --tint: #e7e6f0;                         /* 淡彩色的小块底（日期签、卡片） */
+  --tint-ink: #22212a;
+  --accent-ink: #ffffff;                   /* 主色底上的字 */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+
+  --serif: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  --mono: 'DM Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0c0c0c;
+    --paper-2: #141414;
+    --ink: #e9e7e1;
+    --ink-2: #8a8983;
+    --blue: #3a6cff;
+    --blue-wash: rgba(58, 108, 255, 0.14);
+    --rule: rgba(233, 231, 225, 0.10);
+    --dim: rgba(12, 12, 12, 0.18);
+    --you-bg: #2a2a27;
+    --you-ink: #e9e7e1;
+    --glass: rgba(12, 12, 12, 0.72);
+    --glass-box: rgba(20, 20, 20, 0.55);
+    --box-edge: rgba(233, 231, 225, 0.12);
+    --box-hi: rgba(255, 255, 255, 0.08);
+    --wash: rgba(58, 108, 255, 0.10);
+    --tint: #1e1d27;
+    --tint-ink: #e4e2ef;
+    --accent-ink: #0c0c0c;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+/* 手机手感的底线：不要点按高亮、横屏不放大字、不要下拉刷新和整页橡皮筋 */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: var(--grain);
+  pointer-events: none;
+  opacity: 0.6;
+  z-index: 0;
+}
+
+/* 根容器固定在可视区里：页面本身没有任何可滚的余地，键盘来了只改它的高度（keyboard.ts） */
+.app-root {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  overflow: clip;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+/* 宽屏（电脑浏览器）上收成手机宽度，居中 */
+@media (min-width: 720px) {
+  .app-root { left: 50%; right: auto; width: 520px; transform: translateX(-50%); box-shadow: 0 0 0 1px var(--rule); }
+}
+html.kb-open { --sab: 0px; }
+
+button, input, textarea { font: inherit; color: inherit; background: none; border: none; outline: none; }
+/* 输入框字号不能小于 16px，否则手机浏览器聚焦时会把整页放大 */
+input, textarea, select { font-size: 16px; }
+/* 按钮是控件不是内容：长按不选字、不弹系统菜单 */
+button, [role="button"] { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+button { cursor: pointer; touch-action: manipulation; transition: transform 150ms var(--ease-out), opacity 150ms var(--ease-out); }
+button:active:not(:disabled) { transform: scale(0.96); transition-duration: 80ms; }
+button.row:active:not(:disabled), button.hit:active:not(:disabled) { transform: none; background: var(--paper-2); }
+textarea { resize: none; }
+
+.mono { font-family: var(--mono); font-weight: 300; letter-spacing: 0.04em; }
+.label { font-family: var(--mono); font-weight: 300; font-size: 11px; letter-spacing: 0.08em; color: var(--ink-2); }
+
+/* 只淡不动：你的消息出现时用 */
+@keyframes fade-in { from { opacity: 0; } }
+.fade-in { animation: fade-in 0.32s var(--ease-out) both; }
+
+/* 柔进场：内容晚到半拍时的唯一进场方式 */
+@keyframes soft-in { from { opacity: 0; transform: translateY(6px); } }
+.soft-in { animation: soft-in 0.32s var(--ease-out) both; }
+
+/* 折叠展开：grid 行高 0fr→1fr，比 height 动画稳 */
+.fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s var(--ease-out); }
+.fold > * { min-height: 0; overflow: hidden; opacity: 0; transition: opacity 0.2s var(--ease-out); }
+.fold.open { grid-template-rows: 1fr; }
+.fold.open > * { opacity: 1; transition-delay: 0.06s; }
+
+/* 列表逐项出现：交错 30ms，最多 12 项 */
+.stagger > * { animation: soft-in 0.32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 12) * 30ms); }
+
+/* 等待中：轻微呼吸，1.6s 一周期 */
+@keyframes breathe { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+.breathe { animation: breathe 1.6s var(--ease-in-out) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
